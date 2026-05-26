@@ -3,12 +3,11 @@ import pickle
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM, Dropout
 
-# 1. Aşamadaki (arkadaşının yazdığı) veri hazırlama fonksiyonunu çağırıyoruz
 from veri_isleme import veriyi_hazirla
 
 def modeli_egit_ve_kaydet():
     print("1. Veriler işleme katmanından çekiliyor...")
-    # Eğitim ve test verilerini alıyoruz
+    # Eğitim ve test verilerini al
     X_train, y_train, X_test, y_test, scaler = veriyi_hazirla()
 
     print("2. LSTM Modeli inşa ediliyor...")
