@@ -2,8 +2,10 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from tensorflow.keras.models import load_model
 from veri_isleme import veriyi_hazirla
+from datetime import timedelta
 
 def tahmin_et_ve_sun():
     print("1. Gerekli veriler ve ölçeklendirici (scaler) alınıyor...")
@@ -34,7 +36,17 @@ def tahmin_et_ve_sun():
     gercek_test_degerleri = scaler.inverse_transform(y_test.reshape(-1, 1))
 
     df = pd.read_csv("bitcoin.csv")
+    df['Date'] = pd.to_datetime(df['Date'])
+    df = df.sort_values('Date').reset_index(drop=True)
     tum_gercek_fiyatlar = df['Close'].values
+
+    # Test set tarihlerinin hesaplanması (veri hazırlama fonksiyonuyla uyumlu)
+    series = df['Close'].values.reshape(-1, 1)
+    split = int(len(series) * 0.8)
+    seq_length = X_test.shape[1]
+    # y_test değerleri orijinal seride index: split + seq_length ... len(series)-1
+    test_date_indices = list(range(split + seq_length, len(series)))
+    test_dates = df['Date'].iloc[test_date_indices].reset_index(drop=True)
 
     # Geçmiş 60 günün günlük değişim oranlarını (standart sapmasını) buluyoruz
     son_60_gun = tum_gercek_fiyatlar[-60:]
@@ -51,6 +63,12 @@ def tahmin_et_ve_sun():
     
     gelecek_tahminler = np.array(gelecek_tahminler_zikzakli)
 
+    # Hata ölçütleri: MAE ve Korelasyon (Test seti)
+    from sklearn.metrics import mean_absolute_error
+    mae_test = mean_absolute_error(gercek_test_degerleri.flatten(), test_tahminleri.flatten())
+    korrelasyon = np.corrcoef(gercek_test_degerleri.flatten(), test_tahminleri.flatten())[0, 1]
+    print(f"\nHata Ölçütleri (Test Seti):\n- MAE: {mae_test:.4f}\n- Korelasyon (Pearson): {korrelasyon:.4f}\n")
+
     print("5. 4'lü Sunum Grafikleri hazırlanıyor...")
     fig, axs = plt.subplots(2, 2, figsize=(18, 10))
 
@@ -63,46 +81,57 @@ def tahmin_et_ve_sun():
     axs[0, 0].legend()
 
     # [0, 1] Sağ Üst: Test Seti Başarısı
-    axs[0, 1].plot(gercek_test_degerleri, color='blue', label='Gerçek Fiyatlar')
-    axs[0, 1].plot(test_tahminleri, color='red', alpha=0.7, label='Modelin Tahminleri')
+    # Test seti için tarihleri x ekseni olarak kullan
+    axs[0, 1].plot(test_dates, gercek_test_degerleri.flatten(), color='blue', label='Gerçek Fiyatlar')
+    axs[0, 1].plot(test_dates, test_tahminleri.flatten(), color='red', alpha=0.7, label='Modelin Tahminleri')
     axs[0, 1].set_title('Test Seti Başarısı')
-    axs[0, 1].set_xlabel('Günler')
+    axs[0, 1].set_xlabel('Tarih')
     axs[0, 1].set_ylabel('Fiyat (USD)')
     axs[0, 1].legend()
+    axs[0, 1].xaxis.set_major_locator(mdates.AutoDateLocator())
+    axs[0, 1].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
     # [1, 0] Sol Alt: Tüm Zamanlar Görünümü
+    # Tüm geçmiş için tarihler
     toplam_gun_sayisi = len(tum_gercek_fiyatlar)
-    x_gecmis = np.arange(toplam_gun_sayisi)
-    axs[1, 0].plot(x_gecmis, tum_gercek_fiyatlar, color='blue', label='Tüm Geçmiş Fiyatlar')
-    
+    dates_full = df['Date'].iloc[:toplam_gun_sayisi]
+    axs[1, 0].plot(dates_full, tum_gercek_fiyatlar, color='blue', label='Tüm Geçmiş Fiyatlar')
+
     last_idx = toplam_gun_sayisi - 1
     last_val = tum_gercek_fiyatlar[-1]
     birlesik_tahminler_all = np.concatenate(([last_val], gelecek_tahminler))
-    x_birlesik_gelecek_all = np.arange(last_idx, last_idx + 31)
-    
-    axs[1, 0].plot(x_birlesik_gelecek_all, birlesik_tahminler_all, color='red', linewidth=2, linestyle='-', label='Gelecek 30 Gün (Tahmin)')
+    # Gelecek 30 gün için tarih üret
+    son_tarih = df['Date'].iloc[-1]
+    gelecek_tarihleri = pd.date_range(start=son_tarih + timedelta(days=1), periods=30, freq='D')
+    birlesik_tarih_all = pd.concat([pd.Series([son_tarih]), pd.Series(gelecek_tarihleri)]).reset_index(drop=True)
+
+    axs[1, 0].plot(birlesik_tarih_all, birlesik_tahminler_all, color='red', linewidth=2, linestyle='-', label='Gelecek 30 Gün (Tahmin)')
     axs[1, 0].set_title('Tüm Zamanlar Görünümü')
-    axs[1, 0].set_xlabel('Günler')
+    axs[1, 0].set_xlabel('Tarih')
     axs[1, 0].set_ylabel('Fiyat (USD)')
     axs[1, 0].legend()
+    axs[1, 0].xaxis.set_major_locator(mdates.AutoDateLocator())
+    axs[1, 0].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
     # [1, 1] Sağ Alt: Son 100 Gün Odaklı
     son_100_gun = tum_gercek_fiyatlar[-100:]
-    x_son_100 = np.arange(100)
-    axs[1, 1].plot(x_son_100, son_100_gun, color='blue', linewidth=2, label='Son 100 Gün (Gerçek)')
+    son_100_tarihler = df['Date'].iloc[-100:]
+    axs[1, 1].plot(son_100_tarihler, son_100_gun, color='blue', linewidth=2, label='Son 100 Gün (Gerçek)')
     
-    last_real_idx_100 = 99
     last_real_val_100 = son_100_gun[-1]
     birlesik_tahminler_100 = np.concatenate(([last_real_val_100], gelecek_tahminler))
-    x_birlesik_gelecek_100 = np.arange(last_real_idx_100, last_real_idx_100 + 31)
-    
-    axs[1, 1].plot(x_birlesik_gelecek_100, birlesik_tahminler_100, color='red', linewidth=2.5, linestyle='-', label='Gelecek 30 Gün (Tahmin)')
+    birlesik_tarih_100 = pd.concat([pd.Series([son_100_tarihler.iloc[-1]]), pd.Series(gelecek_tarihleri)]).reset_index(drop=True)
+
+    axs[1, 1].plot(birlesik_tarih_100, birlesik_tahminler_100, color='red', linewidth=2.5, linestyle='-', label='Gelecek 30 Gün (Tahmin)')
     axs[1, 1].set_title('Son 100 Gün Odaklı')
-    axs[1, 1].set_xlabel('Son Günler')
+    axs[1, 1].set_xlabel('Tarih')
     axs[1, 1].set_ylabel('Fiyat (USD)')
     axs[1, 1].legend()
+    axs[1, 1].xaxis.set_major_locator(mdates.AutoDateLocator())
+    axs[1, 1].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
     plt.tight_layout()
+    fig.autofmt_xdate(rotation=25)
     plt.show()
 
 if __name__ == "__main__":
