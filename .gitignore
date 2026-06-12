@@ -207,8 +207,9 @@ marimo/_lsp/
 __marimo__/
 
 # --- Projeye Özel Engellemeler (Bitcoin LSTM) ---
-*.h5
-*.pkl
+# Modeller klasörü içindeki h5 ve pkl dosyalarını yoksay (GitHub'a gönderme)
+models/*.h5
+models/*.pkl
 
 # Eğer VS Code veya PyCharm kullanıyorsan bunların ayar klasörleri:
 .vscode/
