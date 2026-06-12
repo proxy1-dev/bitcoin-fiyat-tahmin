@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from pathlib import Path
 from tensorflow.keras.models import load_model
 from veri_isleme import veriyi_hazirla
 from datetime import timedelta
@@ -13,11 +14,16 @@ def tahmin_et_ve_sun():
 
     print("2. Eğitilmiş model ve eğitim geçmişi yükleniyor...")
     try:
-        model = load_model('lstm_model.h5')
-        with open('egitim_gecmisi.pkl', 'rb') as f:
+        script_dir = Path(__file__).parent
+        models_dir = script_dir.parent / "models"
+        model_path = models_dir / "lstm_model.h5"
+        history_path = models_dir / "egitim_gecmisi.pkl"
+        
+        model = load_model(model_path)
+        with open(history_path, 'rb') as f:
             history_dict = pickle.load(f)
-    except FileNotFoundError:
-        print("HATA: 'lstm_model.h5' veya 'egitim_gecmisi.pkl' bulunamadı.")
+    except FileNotFoundError as e:
+        print(f"HATA: Model veya eğitim geçmişi bulunamadı: {e}")
         print("Lütfen önce 'model_egitimi.py' dosyasını çalıştırın!")
         return
 
@@ -35,7 +41,9 @@ def tahmin_et_ve_sun():
     test_tahminleri = scaler.inverse_transform(model.predict(X_test, verbose=0))
     gercek_test_degerleri = scaler.inverse_transform(y_test.reshape(-1, 1))
 
-    df = pd.read_csv("bitcoin.csv")
+    script_dir = Path(__file__).parent
+    data_path = script_dir.parent / "data" / "bitcoin.csv"
+    df = pd.read_csv(data_path)
     df['Date'] = pd.to_datetime(df['Date'])
     df = df.sort_values('Date').reset_index(drop=True)
     tum_gercek_fiyatlar = df['Close'].values

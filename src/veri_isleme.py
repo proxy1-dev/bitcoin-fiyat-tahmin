@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+from pathlib import Path
 
 def create_sequences(data, seq_length=60):
     X, y = [], []
@@ -9,7 +10,11 @@ def create_sequences(data, seq_length=60):
         y.append(data[i, 0])
     return np.array(X), np.array(y)
 
-def veriyi_hazirla(dosya_yolu="bitcoin.csv", seq_length=60):
+def veriyi_hazirla(dosya_yolu=None, seq_length=60):
+    # Script konumundan dosya yolunu belirle
+    if dosya_yolu is None:
+        script_dir = Path(__file__).parent
+        dosya_yolu = script_dir.parent / "data" / "bitcoin.csv"
 
     print("1. Veri seti yukleniyor ve temizleniyor...")
     df = pd.read_csv(dosya_yolu)
