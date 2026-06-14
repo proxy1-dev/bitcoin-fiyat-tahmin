@@ -41,7 +41,7 @@ Yazılım:
 
 İşletim Sistemi: Windows, Linux veya macOS
 
-Python Sürümü: Python 3.8 veya üzeri
+Python Sürümü: Python 3.8 veya üzeri (önerilen 3.11) 3.14'te tensorflow hatası alınabilir
 
 Sürüm Kontrolü: Git ve GitHub Desktop
 
@@ -86,7 +86,7 @@ Büyük boyutlu ikili (binary) dosyaların deponun boyutunu şişirmemesi için 
 
 Projeyi çalıştırmadan önce, aşağıda verilen yazılımlar sisteminizde yüklü olmalıdır:
 
-1. **Python (3.8 veya üzeri)**
+1. **Python (3.8 veya üzeri) (önerilen 3.11) 3.14'te tensorflow hatası alınabilir**
    - Windows: [python.org](https://www.python.org/downloads/) adresinden indirip kurabilirsiniz
    - Linux/macOS: Terminalden `python3 --version` ile kontrol edebilirsiniz
 
